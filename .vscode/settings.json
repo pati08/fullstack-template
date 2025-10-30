@@ -1,0 +1,10 @@
+{
+    "rust-analyzer": {
+        "cargo": {
+            "features": [ "web", "server" ]
+        },
+        "check": {
+            "command": "clippy"
+        }
+    }
+}
