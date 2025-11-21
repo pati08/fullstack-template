@@ -1,5 +1,4 @@
-FROM rust:1 AS chef
-RUN cargo install cargo-chef
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
 
 FROM chef AS planner
@@ -17,10 +16,10 @@ RUN cargo binstall dioxus-cli --root /.cargo -y --force
 ENV PATH="/.cargo/bin:$PATH"
 
 # Create the final bundle folder. Bundle always executes in release mode with optimizations enabled
-RUN dx bundle --platform web
+RUN dx bundle --release --web
 
 FROM chef AS runtime
-COPY --from=builder /app/target/dx/{{ crate_name }}/release/web/ /usr/local/app
+COPY --from=builder /app/target/dx/fullstack-template/release/web/ /usr/local/app
 
 # set our port and make sure to listen for all connections
 ENV PORT=8080
