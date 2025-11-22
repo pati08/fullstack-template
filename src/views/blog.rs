@@ -13,6 +13,7 @@ pub fn Blog(id: i32) -> Element {
         document::Link { rel: "stylesheet", href: BLOG_CSS }
 
         div {
+            class: "bg-gray-500",
             id: "blog",
 
             // Content

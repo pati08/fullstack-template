@@ -37,7 +37,6 @@ enum Route {
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 // The asset macro also minifies some assets like CSS and JS to make bundled smaller
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
-const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
     #[cfg(feature = "web")]
@@ -67,7 +66,7 @@ async fn launch_server(component: fn() -> Element) {
     let listener = tokio::net::TcpListener::bind(address).await.unwrap();
     let router = axum::Router::new()
         // serve_dioxus_application adds routes to server side render the application, serve static assets, and register server functions
-        .serve_dioxus_application(ServeConfigBuilder::default(), component)
+        .serve_dioxus_application(ServeConfig::default(), component)
         .into_make_service();
     axum::serve(listener, router).await.unwrap();
 }
@@ -84,7 +83,6 @@ fn App() -> Element {
         // we are using the `document::Link` component to add a link to our favicon and main CSS file into the head of our app.
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
-        document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
         // The router component renders the route enum we defined above. It will handle synchronization of the URL and render
         // the layouts and components for the active route.

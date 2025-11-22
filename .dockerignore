@@ -4,3 +4,11 @@ LICENSES
 LICENSE
 temp
 README.md
+.github
+.git
+.vscode
+envrc
+shell.nix
+flake*
+clippy.toml
+.gitignore
