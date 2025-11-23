@@ -1,4 +1,4 @@
-use crate::{% if use-auth %}{ClientUserInfo, {% endif %}Route};
+use crate::{% if use-auth %}{ClientUserInfo, {% endif %}Route{% if use-auth %}}{% endif %};
 use dioxus::prelude::*;
 
 const NAVBAR_CSS: Asset = asset!("/assets/styling/navbar.css");
