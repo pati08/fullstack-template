@@ -1,7 +1,8 @@
-use crate::Route;
+use crate::{ClientUserInfo, Route};
 use dioxus::prelude::*;
 
 const NAVBAR_CSS: Asset = asset!("/assets/styling/navbar.css");
+const PERSON_SVG: Asset = asset!("/assets/person.svg");
 
 /// The Navbar component that will be rendered on all pages of our app since every page is under the layout.
 ///
@@ -10,23 +11,45 @@ const NAVBAR_CSS: Asset = asset!("/assets/styling/navbar.css");
 /// routes will be rendered under the outlet inside this component
 #[component]
 pub fn Navbar() -> Element {
+    // let session = use_server_future(me)?;
+    let session = use_loader(me)?;
+    let account_link = move || match &*session.read() {
+        Some(_) => "/manage-account",
+        None => "/auth/login",
+    };
+    let account_text = move || match &*session.read() {
+        Some(user_info) => user_info.name.clone().unwrap_or_default(),
+        None => "Login".to_string(),
+    };
     rsx! {
         document::Link { rel: "stylesheet", href: NAVBAR_CSS }
 
         div {
             id: "navbar",
-            Link {
-                to: Route::Home {},
-                "Home"
+            div {
+                id: "navbar-links",
+                Link {
+                    to: Route::Home {},
+                    "Home"
+                }
             }
-            Link {
-                to: Route::Blog { id: 1 },
-                "Blog"
+            a {
+                id: "navbar-user",
+                href: account_link(),
+                img { src: PERSON_SVG, id: "person-icon" }
+                {account_text()}
             }
         }
 
         // The `Outlet` component is used to render the next component inside the layout. In this case, it will render either
         // the [`Home`] or [`Blog`] component depending on the current route.
-        Outlet::<Route> {}
+        main {
+            Outlet::<Route> {}
+        }
     }
+}
+
+#[get("/api/auth/me", auth: axum::Extension<Option<crate::auth::Session>>)]
+async fn me() -> Result<Option<ClientUserInfo>> {
+    Ok(auth.as_ref().map(|v| v.user_info.clone().into()))
 }

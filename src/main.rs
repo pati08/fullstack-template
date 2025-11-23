@@ -1,9 +1,30 @@
 // The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
 // need dioxus
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 
-use views::{Blog, Home, Navbar};
+use views::{Home, Login, ManageAccount, Navbar};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ClientUserInfo {
+    pub email: Option<String>,
+    pub name: Option<String>,
+    pub preferred_username: Option<String>,
+}
+#[cfg(feature = "server")]
+impl From<auth::UserInfo> for ClientUserInfo {
+    fn from(value: auth::UserInfo) -> Self {
+        Self {
+            email: value.email,
+            name: value.name,
+            preferred_username: value.preferred_username,
+        }
+    }
+}
+
+/// Define an auth module for OIDC authentication
+#[cfg(feature = "server")]
+mod auth;
 /// Define a components module that contains all shared components for our app.
 mod components;
 /// Define a views module that contains the UI for all Layouts and Routes for our app.
@@ -24,12 +45,20 @@ enum Route {
         // the component for that route will be rendered. The component name that is rendered defaults to the variant name.
         #[route("/")]
         Home {},
-        // The route attribute can include dynamic parameters that implement [`std::str::FromStr`] and [`std::fmt::Display`] with the `:` syntax.
-        // In this case, id will match any integer like `/blog/123` or `/blog/-456`.
-        #[route("/blog/:id")]
-        // Fields of the route variant will be passed to the component as props. In this case, the blog component must accept
-        // an `id` prop of type `i32`.
-        Blog { id: i32 },
+        #[route("/login")]
+        Login {},
+        #[route("/manage-account")]
+        ManageAccount {},
+
+        #[route("/:..segments")]
+        NotFound { segments: Vec<String> },
+}
+
+#[component]
+fn NotFound(segments: Vec<String>) -> Element {
+    rsx! {
+        "Page " {segments.join("/")} " does not exist"
+    }
 }
 
 // We can import assets in dioxus with the `asset!` macro. This macro takes a path to an asset relative to the crate root.
@@ -55,7 +84,17 @@ fn main() {
 }
 #[cfg(feature = "server")]
 async fn launch_server(component: fn() -> Element) {
+    use axum::routing::get;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use tower_cookies::CookieManagerLayer;
+
+    #[cfg(debug_assertions)]
+    {
+        let _ = dotenvy::dotenv().inspect_err(|_e| eprintln!(".env file not found"));
+    }
+
+    // Initialize auth state
+    let auth_state = auth::init_auth_state().await;
 
     // Get the address the server should run on. If the CLI is running, the CLI proxies fullstack into the main address
     // and we use the generated address the CLI gives us
@@ -64,10 +103,27 @@ async fn launch_server(component: fn() -> Element) {
     let port = dioxus::cli_config::server_port().unwrap_or(8080);
     let address = SocketAddr::new(ip, port);
     let listener = tokio::net::TcpListener::bind(address).await.unwrap();
-    let router = axum::Router::new()
+
+    let dioxus_router = axum::Router::new()
         // serve_dioxus_application adds routes to server side render the application, serve static assets, and register server functions
-        .serve_dioxus_application(ServeConfig::default(), component)
-        .into_make_service();
+        .serve_dioxus_application(ServeConfig::default(), component);
+
+    let auth_router = axum::Router::new()
+        // Auth routes
+        .route("/auth/login", get(auth::login_handler))
+        .route("/auth/callback", get(auth::callback_handler))
+        .route("/auth/me", get(auth::me_handler))
+        .route("/auth/logout", get(auth::logout_handler));
+
+    let router = auth_router
+        .with_state(auth_state.clone())
+        .merge(dioxus_router)
+        .layer(axum::middleware::from_fn_with_state(
+            auth_state,
+            auth::session_middleware,
+        ))
+        .layer(CookieManagerLayer::new());
+
     axum::serve(listener, router).await.unwrap();
 }
 
