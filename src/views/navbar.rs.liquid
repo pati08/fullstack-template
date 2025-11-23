@@ -1,4 +1,4 @@
-use crate::{ClientUserInfo, Route};
+use crate::{% if use-auth %}{ClientUserInfo, {% endif %}Route};
 use dioxus::prelude::*;
 
 const NAVBAR_CSS: Asset = asset!("/assets/styling/navbar.css");
@@ -11,7 +11,7 @@ const PERSON_SVG: Asset = asset!("/assets/person.svg");
 /// routes will be rendered under the outlet inside this component
 #[component]
 pub fn Navbar() -> Element {
-    // let session = use_server_future(me)?;
+    {% if use-auth %}// let session = use_server_future(me)?;
     let session = use_loader(me)?;
     let account_link = move || match &*session.read() {
         Some(_) => "/manage-account",
@@ -21,7 +21,7 @@ pub fn Navbar() -> Element {
         Some(user_info) => user_info.name.clone().unwrap_or_default(),
         None => "Login".to_string(),
     };
-    rsx! {
+    {% endif %}rsx! {
         document::Link { rel: "stylesheet", href: NAVBAR_CSS }
 
         div {
@@ -33,12 +33,13 @@ pub fn Navbar() -> Element {
                     "Home"
                 }
             }
-            a {
+            {% if use-auth %}a {
                 id: "navbar-user",
                 href: account_link(),
                 img { src: PERSON_SVG, id: "person-icon" }
                 {account_text()}
             }
+            {% endif %}
         }
 
         // The `Outlet` component is used to render the next component inside the layout. In this case, it will render either
@@ -49,7 +50,8 @@ pub fn Navbar() -> Element {
     }
 }
 
-#[get("/api/auth/me", auth: axum::Extension<Option<crate::auth::Session>>)]
+{% if use-auth %}#[get("/api/auth/me", auth: axum::Extension<Option<crate::auth::Session>>)]
 async fn me() -> Result<Option<ClientUserInfo>> {
     Ok(auth.as_ref().map(|v| v.user_info.clone().into()))
 }
+{% endif %}

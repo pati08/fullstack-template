@@ -19,7 +19,7 @@ ENV PATH="/.cargo/bin:$PATH"
 RUN dx bundle --release --web
 
 FROM chef AS runtime
-COPY --from=builder /app/target/dx/fullstack-template/release/web/ /usr/local/app
+COPY --from=builder /app/target/dx/{{project-name}}/release/web/ /usr/local/app
 
 # set our port and make sure to listen for all connections
 ENV PORT=8080
@@ -29,4 +29,4 @@ ENV IP=0.0.0.0
 EXPOSE 8080
 
 WORKDIR /usr/local/app
-ENTRYPOINT [ "/usr/local/app/fullstack-template" ]
+ENTRYPOINT [ "/usr/local/app/{{project-name}}" ]

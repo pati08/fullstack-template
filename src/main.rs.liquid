@@ -3,9 +3,9 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use views::{Home, Login, ManageAccount, Navbar};
+use views::{Home, {% if use-auth %}Login, ManageAccount, {% endif %}Navbar};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+{% if use-auth %}#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClientUserInfo {
     pub email: Option<String>,
     pub name: Option<String>,
@@ -25,7 +25,7 @@ impl From<auth::UserInfo> for ClientUserInfo {
 /// Define an auth module for OIDC authentication
 #[cfg(feature = "server")]
 mod auth;
-/// Define a components module that contains all shared components for our app.
+{% endif %}/// Define a components module that contains all shared components for our app.
 mod components;
 /// Define a views module that contains the UI for all Layouts and Routes for our app.
 mod views;
@@ -45,12 +45,12 @@ enum Route {
         // the component for that route will be rendered. The component name that is rendered defaults to the variant name.
         #[route("/")]
         Home {},
-        #[route("/login")]
+        {% if use-auth %}#[route("/login")]
         Login {},
         #[route("/manage-account")]
         ManageAccount {},
 
-        #[route("/:..segments")]
+        {% endif %}#[route("/:..segments")]
         NotFound { segments: Vec<String> },
 }
 
@@ -86,7 +86,7 @@ fn main() {
 async fn launch_server(component: fn() -> Element) {
     use axum::routing::get;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-    use tower_cookies::CookieManagerLayer;
+    {% if use-auth %}use tower_cookies::CookieManagerLayer;
 
     #[cfg(debug_assertions)]
     {
@@ -96,7 +96,7 @@ async fn launch_server(component: fn() -> Element) {
     // Initialize auth state
     let auth_state = auth::init_auth_state().await;
 
-    // Get the address the server should run on. If the CLI is running, the CLI proxies fullstack into the main address
+    {% endif %}// Get the address the server should run on. If the CLI is running, the CLI proxies fullstack into the main address
     // and we use the generated address the CLI gives us
     let ip =
         dioxus::cli_config::server_ip().unwrap_or_else(|| IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
@@ -108,7 +108,7 @@ async fn launch_server(component: fn() -> Element) {
         // serve_dioxus_application adds routes to server side render the application, serve static assets, and register server functions
         .serve_dioxus_application(ServeConfig::default(), component);
 
-    let auth_router = axum::Router::new()
+    {% if use-auth %}let auth_router = axum::Router::new()
         // Auth routes
         .route("/auth/login", get(auth::login_handler))
         .route("/auth/callback", get(auth::callback_handler))
@@ -123,7 +123,8 @@ async fn launch_server(component: fn() -> Element) {
             auth::session_middleware,
         ))
         .layer(CookieManagerLayer::new());
-
+{% else %}let router = dioxus_router;
+{% endif %}
     axum::serve(listener, router).await.unwrap();
 }
 

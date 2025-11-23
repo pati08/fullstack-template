@@ -1,0 +1,11 @@
+[template]
+cargo_generate_version = ">=0.10.0"
+
+[placeholders.project-name]
+type = "string"
+prompt = "What is the name of your project?"
+
+[placeholders.use-auth]
+type = "bool"
+prompt = "Do you want authentication with OpenIDConnect and Zitadel?"
+default = false
